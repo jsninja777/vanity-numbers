@@ -1,0 +1,14 @@
+{
+  "name": "vanity-lambda",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node18 --outdir=dist --external:aws-sdk && cp src/wordlist.txt dist/",
+    "test": "jest --runInBand"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.901.0",
+    "@aws-sdk/lib-dynamodb": "^3.901.0"
+  },
+  "devDependencies": {}
+}

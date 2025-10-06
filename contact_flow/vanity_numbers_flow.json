@@ -1,0 +1,159 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "InvokeLambda1",
+  "Metadata": {
+    "entryPointPosition": {
+      "x": -215.2,
+      "y": -35.2
+    },
+    "ActionMetadata": {
+      "InvokeLambda1": {
+        "position": {
+          "x": -164,
+          "y": 103.2
+        },
+        "parameters": {
+          "LambdaFunctionARN": {
+            "displayName": "vanity-numbers-project-development-vanityLambda"
+          }
+        },
+        "dynamicMetadata": {
+          "callerNumber": false
+        }
+      },
+      "Disconnect1": {
+        "position": {
+          "x": 839.2,
+          "y": 0.8
+        }
+      },
+      "PlayPromptError": {
+        "position": {
+          "x": 378.4,
+          "y": 369.6
+        }
+      },
+      "CheckLambdaError": {
+        "position": {
+          "x": 55.2,
+          "y": -39.2
+        },
+        "conditions": [],
+        "conditionMetadata": [
+          {
+            "id": "f117c4e9-24b1-4edb-b1ee-9c93e6400dfe",
+            "operator": {
+              "name": "Starts with",
+              "value": "StartsWith",
+              "shortDisplay": "starts with"
+            },
+            "value": "\""
+          }
+        ]
+      },
+      "PlayPromptSuccess": {
+        "position": {
+          "x": 537.6,
+          "y": 64
+        },
+        "parameters": {
+          "Text": {
+            "useDynamic": true
+          }
+        },
+        "useDynamic": true
+      }
+    },
+    "Annotations": [],
+    "name": "Vanity Numbers Flow",
+    "description": "Vanity Number Flow with Lambda invocation",
+    "type": "contactFlow",
+    "status": "PUBLISHED",
+    "hash": {}
+  },
+  "Actions": [
+    {
+      "Parameters": {
+        "LambdaFunctionARN": "arn:aws:lambda:us-east-1:{accountId}:function:vanity-numbers-project-development-vanityLambda",
+        "InvocationTimeLimitSeconds": "8",
+        "InvocationType": "SYNCHRONOUS",
+        "LambdaInvocationAttributes": {
+          "callerNumber": "$.CustomerEndpoint.Address"
+        },
+        "ResponseValidation": {
+          "ResponseType": "JSON"
+        }
+      },
+      "Identifier": "InvokeLambda1",
+      "Type": "InvokeLambdaFunction",
+      "Transitions": {
+        "NextAction": "CheckLambdaError",
+        "Errors": [
+          {
+            "NextAction": "PlayPromptError",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {},
+      "Identifier": "Disconnect1",
+      "Type": "DisconnectParticipant",
+      "Transitions": {}
+    },
+    {
+      "Parameters": {
+        "Text": "Sorry, we couldn't generate vanity numbers for your phone. Please try again later."
+      },
+      "Identifier": "PlayPromptError",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "Disconnect1"
+      }
+    },
+    {
+      "Parameters": {
+        "ComparisonValue": "$.LambdaInvocation.ResultData.error"
+      },
+      "Identifier": "CheckLambdaError",
+      "Type": "Compare",
+      "Transitions": {
+        "NextAction": "PlayPromptSuccess",
+        "Conditions": [
+          {
+            "NextAction": "PlayPromptError",
+            "Condition": {
+              "Operator": "TextStartsWith",
+              "Operands": [
+                "\""
+              ]
+            }
+          }
+        ],
+        "Errors": [
+          {
+            "NextAction": "PlayPromptSuccess",
+            "ErrorType": "NoMatchingCondition"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "Text": "$.LambdaInvocation.ResultData.message"
+      },
+      "Identifier": "PlayPromptSuccess",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "Disconnect1",
+        "Errors": [
+          {
+            "NextAction": "PlayPromptError",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    }
+  ]
+}

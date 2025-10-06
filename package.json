@@ -1,0 +1,28 @@
+{
+  "name": "vanity-numbers-project",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "workspaces": [
+    "src/vanity-lambda",
+    "src/webapi-lambda",
+    "webapp"
+  ],
+  "scripts": {
+    "build:all": "yarn workspace vanity-lambda build && yarn workspace webapi-lambda build",
+    "build:web": "yarn --cwd webapp build",
+    "dev:web": "yarn --cwd webapp dev",
+    "test": "yarn workspace vanity-lambda test",
+    "deploy": "yarn build:all && sls deploy --stage development && yarn associate-connect && yarn setup-contact-flow",
+    "associate-connect": "aws connect associate-lambda-function --instance-id 68679478-72be-41b4-8093-a375768d2783 --function-arn arn:aws:lambda:us-east-1:724772077298:function:vanity-numbers-project-development-vanityLambda --region us-east-1",
+    "setup-contact-flow": "./scripts/create-contact-flow.sh"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "esbuild": "^0.19.0",
+    "jest": "^29.7.0",
+    "serverless": "^4.20.2",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.9.3"
+  }
+}

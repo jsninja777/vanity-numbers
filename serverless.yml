@@ -1,0 +1,128 @@
+service: vanity-numbers-project
+
+build:
+  esbuild: false
+
+package:
+  include:
+    - src/vanity-lambda/dist/wordlist.txt
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-east-1
+  stage: ${opt:stage, 'development'}
+  stackName: ${self:service}-${self:provider.stage}
+  memorySize: 256
+  timeout: 15
+  environment:
+    TABLE_NAME: !Ref VanityResultsTable
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:GetItem
+            - dynamodb:Scan
+            - dynamodb:Query
+          Resource: !GetAtt VanityResultsTable.Arn
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: 'arn:aws:logs:${aws:region}:${aws:accountId}:log-group:/aws/lambda/*:*'
+
+custom:
+  connectInstanceId: arn:aws:connect:us-east-1:${aws:accountId}:instance/68679478-72be-41b4-8093-a375768d2783
+
+functions:
+  vanityLambda:
+    handler: src/vanity-lambda/dist/index.handler
+    timeout: 30
+    environment:
+      TABLE_NAME: !Ref VanityResultsTable
+    events:
+      - http:
+          path: /generate
+          method: post
+          cors: true
+
+  webApiLambda:
+    handler: src/webapi-lambda/dist/index.handler
+    timeout: 15
+    environment:
+      TABLE_NAME: !Ref VanityResultsTable
+    events:
+      - http:
+          path: /last5
+          method: get
+          cors: true
+
+resources:
+  Resources:
+    VanityResultsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: VanityResults
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: callerNumber
+            AttributeType: S
+          - AttributeName: timestamp
+            AttributeType: S
+        KeySchema:
+          - AttributeName: callerNumber
+            KeyType: HASH
+          - AttributeName: timestamp
+            KeyType: RANGE
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+
+    ConnectPhoneNumber:
+      Type: AWS::Connect::PhoneNumber
+      Properties:
+        CountryCode: US
+        Type: DID
+        TargetArn: ${self:custom.connectInstanceId}
+
+    LambdaInvokePermissionForConnect:
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName: !GetAtt VanityLambdaLambdaFunction.Arn
+        Action: lambda:InvokeFunction
+        Principal: connect.amazonaws.com
+        SourceArn: !GetAtt VanityLambdaLambdaFunction.Arn
+
+outputs:
+  VanityLambdaArn:
+    Description: ARN of the Vanity Numbers Lambda function
+    Value: !GetAtt VanityLambdaLambdaFunction.Arn
+    Export:
+      Name: VanityLambdaArn-${self:provider.stage}
+  
+  WebApiEndpoint:
+    Description: API Gateway endpoint for last 5 callers
+    Value: 
+      Fn::Sub: 'https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}/last5'
+    Export:
+      Name: WebApiEndpoint-${self:provider.stage}
+  
+  DynamoDBTableName:
+    Description: DynamoDB table name for vanity results
+    Value: !Ref VanityResultsTable
+    Export:
+      Name: VanityResultsTable-${self:provider.stage}
+      
+  PhoneNumber:
+    Value: !Ref ConnectPhoneNumber
+    Export:
+      Name: PhoneNumber
+  PhoneNumberArn:
+    Value: !GetAtt ConnectPhoneNumber.Arn
+    Export:
+      Name: PhoneNumberArn
